@@ -1,0 +1,7 @@
+{
+    "name": "user",
+    "title": "User",
+    "main": "user.js",
+    "version": "1.0.0",
+    "consumes": []
+}

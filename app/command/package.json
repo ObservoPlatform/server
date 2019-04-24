@@ -1,0 +1,7 @@
+{
+    "name": "command",
+    "title": "Command",
+    "main": "command.js",
+    "version": "1.0.0",
+    "consumes": []
+}

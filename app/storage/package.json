@@ -1,0 +1,7 @@
+{
+    "name": "storage",
+    "title": "Storage",
+    "main": "storage.js",
+    "version": "1.0.0",
+    "consumes": ["app:command"]
+}

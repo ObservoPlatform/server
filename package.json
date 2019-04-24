@@ -1,0 +1,28 @@
+{
+  "name": "observo-server",
+  "version": "1.0.0",
+  "description": "Observo Backend Runtime",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "ImportProgram",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/core": "^7.2.2",
+    "@babel/plugin-transform-async-to-generator": "^7.2.0",
+    "@babel/plugin-transform-spread": "^7.2.2",
+    "@babel/preset-env": "^7.3.1",
+    "@babel/preset-react": "^7.0.0",
+    "amd-loader": "0.0.8",
+    "blessed": "^0.1.81",
+    "express": "^4.16.4",
+    "fs-extra": "^7.0.1",
+    "jdenticon": "^2.1.1",
+    "lokijs": "^1.5.6",
+    "minimist": "^1.2.0",
+    "socket.io": "^2.2.0",
+    "string-argv": "^0.1.1",
+    "uuid": "^3.3.2"
+  }
+}

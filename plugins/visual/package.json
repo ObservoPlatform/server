@@ -1,0 +1,8 @@
+{
+    "name": "visual",
+    "title": "visual",
+    "main": "data.js",
+    "render": "render.js",
+    "version": "1.0.0",
+    "consumes": ["app:loader"]
+}

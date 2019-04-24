@@ -1,0 +1,7 @@
+{
+    "name": "loader",
+    "title": "Loader",
+    "main": "loader.js",
+    "version": "1.0.0",
+    "consumes": []
+}
