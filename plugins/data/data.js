@@ -1,4 +1,5 @@
-Observo.onMount((imports) => {
+Observo.onMount((imports, register) => {
+    console.log("{blue Hello from Data}")
     //imports.app.http - HTTP & XML requests
     //imports.app.math - EXCEL math based functions
     //imports.app.user - Check user roles with database
@@ -16,14 +17,4 @@ Observo.onMount((imports) => {
     }
     imports.app.loader.register(Example)
 })
-Observo.register({
-    GLOBAL: {
-        doSomething: (name, callback) => {
-            //Waits for the onMount process to complete
-            Observo.isLoaded(() => {
-                
-            })
-        }
-    }
-})
-console.log("{white-bg}{black-fg}Hello from Data{/black-fg}{/white-bg}")
+

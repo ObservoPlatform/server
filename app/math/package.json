@@ -1,7 +1,0 @@
-{
-    "name": "math",
-    "title": "Math",
-    "main": "math.js",
-    "version": "1.0.0",
-    "consumes": []
-}

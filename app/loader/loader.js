@@ -3,6 +3,8 @@
 const fs = require('fs-extra');
 const crypto = require('crypto');
 
+
+//TODO: Redo this entire loading system (for compiling client code, also validation checks!)
 class LoaderRuntime {
     constructor() {
         this.plugins = {}
@@ -144,17 +146,17 @@ class LoaderRuntime {
         }
     }
 }
-let loader = new LoaderRuntime()
+//let loader = new LoaderRuntime()
 
-Observo.onCustomMount((imports) => {
-    loader.activate(imports)
-})
-
-Observo.register({
-    GLOBAL: {
-        register: (name, runtime) => {
-            console.log(`${name} is registered`)
-            loader.registerPlugin(name, runtime)
+Observo.onMount((imports, register) => {
+    //loader.activate(imports)
+    register({
+        GLOBAL: {
+            register: (info, runtime) => {
+                console.log(`${info.name} is registered`)
+                //loader.registerPlugin(name, runtime)
+            }
         }
-    }
+    })
 })
+

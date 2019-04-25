@@ -3,5 +3,10 @@
     "title": "Loader",
     "main": "loader.js",
     "version": "1.0.0",
-    "consumes": []
+    "fabritect": {
+        "for": ["Observo"],
+        "consumes": {
+          "app@http": "1.0.0"
+        }
+      }
 }

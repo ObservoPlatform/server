@@ -4,5 +4,10 @@
     "main": "data.js",
     "render": "render.js",
     "version": "1.0.0",
-    "consumes": ["app:loader"]
+    "fabritect": {
+        "for": ["Observo"],
+        "consumes": {
+          "app@loader": "1.0.0"
+        }
+      }
 }

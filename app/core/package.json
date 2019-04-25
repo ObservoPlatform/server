@@ -1,14 +1,15 @@
 {
-    "name": "storage",
-    "title": "Storage",
-    "main": "storage.js",
+    "name": "core",
+    "title": "CORE",
+    "main": "core.js",
     "version": "1.0.0",
     "fabritect": {
         "for": [
             "Observo"
         ],
         "consumes": {
-          
+            "app@storage": "1.0.0",
+            "app@http": "1.0.0"
         }
     }
 }

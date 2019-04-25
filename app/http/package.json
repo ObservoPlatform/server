@@ -3,5 +3,12 @@
     "title": "HTTP",
     "main": "http.js",
     "version": "1.0.0",
-    "consumes": ["app:storage"]
+    "fabritect": {
+        "for": [
+            "Observo"
+        ],
+        "consumes": {
+            "app@storage": "1.0.0"
+        }
+    }
 }
