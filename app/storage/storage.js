@@ -8,19 +8,15 @@ Observo.onMount((imports, register) => {
     });
     var jdenticon = require("jdenticon")
 
-
     db.loadDatabase({}, (err) => {
         if (err) {
             console.log("$4Failed to load storage : " + err);
         }
         else {
-
             let _users = db.addCollection("users")
-            let _settings = db.addCollection("settings")
             let _packs = db.addCollection("packs")
             let _plugins = db.addCollection("plugins")
             let _groups = db.addCollection("groups")
-            let _projects = db.addCollection("projects")
 
             let _loadedDB = {}
             //When a new project is created (projects/3878hf382gsjf9h9f.proj)
@@ -215,16 +211,30 @@ Observo.onMount((imports, register) => {
                      * @param {String} name 
                      * @param {String} user_uuid 
                      */
-                    createGroup(name, user_uuid) {
-                        //TODO: Add check to not create group if already created
-                        let id = uuidv4() //Make a uuid for the group, if lets say the name was changed down the road
-                        _groups.insert({
-                            owner: user_uuid, //Owner of the group, has all permissions of a group, and projects (MASTER)
-                            user: user_uuid,  //Also a user of this group
-                            uuid: id, //ID if the group
-                            name, //Name of it
-                            accept: true
-                        })
+                    createGroup(name, user_uuid, members) {
+                        if (_db.USERS.isUser(user_uuid)) {
+                            //TODO: Add check to not create group if already created
+                            let id = uuidv4() //Make a uuid for the group, if lets say the name was changed down the road
+                            _groups.insert({
+                                owners: [user_uuid], //Owner of the group, has all permissions of a group, and projects (MASTER)
+                                uuid: id, //ID if the group
+                                name, //Name of it,
+                                projects: []
+                            })
+                            //Invite all users to the group
+                            for (let member in members) {
+                                this.addUserToGroup(id, members[member], { invited: false, permissions: [] })
+                            }
+                            this.addUserToGroup(id, user_uuid, { invited: true, permissions: ["*"] })
+                        }
+                    },
+                    hasGroupPermission(user_uuid, permission) {
+
+                    },
+                    async createProject(user_uuid, group_uuid) {
+                        if (await this.isGroupByUUID(group_uuid)) {
+
+                        }
                     },
                     /**
                      * isGroup - Check if a group, by name is already created. 
@@ -238,6 +248,16 @@ Observo.onMount((imports, register) => {
                             return true
                         }
                         return false
+                    },
+                    /**
+                     * getNameOfGroup - 
+                     * @param {String} group_uuid 
+                     */
+                    getNameOfGroup(group_uuid) {
+                        if (this.isGroupByUUID(group_uuid)) {
+                            return _groups.findObject({ "uuid": group_uuid }).name
+                        }
+                        return null
                     },
                     /**
                      * isGroupByUUID - Check if a group by uuid is already created
@@ -268,48 +288,34 @@ Observo.onMount((imports, register) => {
                      * @param {String} user_uuid 
                      * @param {Boolean} accept 
                      */
-                    inviteUserToGroup(group_uuid, user_uuid, accept = false) {
-
-                        _groups.insert({ user: user_uuid, uuid: group_uuid, accepted: accept })
-                    },
-                    /**
-                     * acceptInvite - Accept an invite from a group
-                     * @param {String} group_uuid 
-                     * @param {String} user_uuid 
-                     */
-                    acceptInvite(group_uuid, user_uuid) {
-                        let invite = _groups.findObject({ 'user': group_uuid, 'uuid': group_uuid })
-                        invite.accept = true
-                        _groups.update(invite)
-                    },
-                    /**
-                     * listUserInvites - List all user invites
-                     * @param {String} user_uuid 
-                     */
-                    listUserInvites(user_uuid) {
-                        //Check if the user has "not" accept any invites (false)
-                        let user = _groups.findObject({ 'user': user_uuid, 'accept': false })
-                        return user
-                    },
-                    /**
-                     * isUserAccepted - Checks if a user has accepted invite from selected group
-                     * @param {String} group_uuid 
-                     * @param {String} user_uuid 
-                     */
-                    isUserAccepted(group_uuid, user_uuid) {
-                        if (isUserInGroup(group_uuid, user_uuid)) {
-                            let user = _groups.findObject({ 'user': group_uuid, 'uuid': group_uuid })
-                            return user.accept
+                    addUserToGroup(group_uuid, user_uuid, options) {
+                        console.log(user_uuid)
+                        if (_db.USERS.isUser(user_uuid)) {
+                            let user = _users.findObject({ 'uuid': user_uuid })
+                            if (user.groups == null) {
+                                user.groups = {}
+                            }
+                            if (user.groups[group_uuid] == null) {
+                                user.groups[group_uuid] = {}
+                            }
+                            user.groups[group_uuid] = options
+                            _users.update(user)
+                        } else {
+                            console.log("Invalid User...")
                         }
                     },
-                    listGroups(user_uuid) {
-                        let data = _groups.find({ 'user': user_uuid, 'accept': true })
+                    async listGroups(user_uuid) {
+                        let data = _users.findObject({ 'uuid': user_uuid })
                         let groups = {}
-                        for (let group in data) {
-                            let object = data[group]
-                            console.log(JSON.stringify(object))
-                            groups[object.name] = object.uuid
+                        for (let group in data.groups) {
+                            if (data.groups[group].invited != null) {
+                                if (data.groups[group].invited == true) {
+                                    let name = await this.getNameOfGroup(group)
+                                    groups[name] = group
+                                }
+                            }
                         }
+                        console.logX(groups)
                         return groups
                     }
                 },
@@ -401,17 +407,51 @@ Observo.onMount((imports, register) => {
                     }
                 },
                 PROJECTS: {
-                    createProject(name, group_uuid) {
+                    /**
+                     * createProject - Creates a new project based on a name and the group
+                     * @param {String} name 
+                     * @param {String} group_uuid 
+                     */
+                    async createProject(name, group_uuid) {
+                        let uuid = uuidv4()
                         _projects.insert({
                             group: group_uuid,
-                            uuid: uuidv4(),
-                            name: name,
+                            uuid,
                             options: {}
                         })
+                        await this.addProjectToGroup(name, uuid, group_uuid)
+                        return true
                     },
-                    getProjectsFromGroup(group_uuid) {
-                        let projects = _project.findObject({ 'group': group_uuid })
-                        return projects
+                    /**
+                     * addProjectToGroup - Adds a project to the group 
+                     * @param {String} name Project Name
+                     * @param {String} project_uuid Project UUID
+                     * @param {String} group_uuid Group UUID
+                     */
+                    async addProjectToGroup(name, project_uuid, group_uuid) {
+                        //Find the group object
+                        let group = _groups.findObject({ "uuid": group_uuid })
+                        //If there is an entry
+                        if (group.length > 0) {
+                            //Check if projects is made, if not make it an object
+                            if (group.hasOwnProperty("projects")) {
+                                group.projects = {}
+                            }
+                            //Save the name in projects
+                            group.project[project_uuid] = name
+                            //Update the group entry
+                            _groups.update(group)
+                        }
+                        return true
+                    },
+                    async getProjects(group_uuid) {
+                        let group = _groups.findObject({ "uuid": group_uuid })
+                        //If there is an entry
+                        if (group.length > 0) {
+                            //Return all projects
+                            return group.projects
+                        }
+                        return null //If not a group, return null
                     },
                     getProject() {
                         if (this.isProjectByUUID(project_uuid)) {

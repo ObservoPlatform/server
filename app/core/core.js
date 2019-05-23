@@ -22,7 +22,7 @@ class ConnectedUser {
         this.validAuth = false
 
         this.update_group_list()
-        
+
         this.event_auth_validateAccount()
         this.event_auth_validKey()
         this.event_group_create()
@@ -92,16 +92,6 @@ class ConnectedUser {
         })
 
     }
-    event_group_create() {
-        let self = this
-        self.client.on("groups_create", async (data) => {
-            let user_uuid = data.uuid
-            let name = data.uuid
-            if (!await self.db.GROUPS.isGroup(name)) {
-                self.db.GROUPS.addGroup(name)
-            }
-        })
-    }
     event_group_checker() {
         let self = this
         this.client.on("groups_checker", async (data) => {
@@ -130,6 +120,39 @@ class ConnectedUser {
             }
         })
     }
+    event_group_selected() {
+        this.client.on("group_selected", async (data) => {
+            if (data.hasPropertyKey("uuid")) {
+                let isGroup = await self.db.GROUPS.isGroupByUUID(data.uuid)
+                if (isGroup) {
+                    
+                }
+            }
+        })
+    }
+    event_group_projects() {
+
+    }
+    event_group_create() {
+        let self = this
+        this.client.on("group_create", async (data) => {
+            console.log("CREATING GROUP")
+            if (data.name != undefined && data.members != undefined) {
+                let name = data.name
+                let members = data.members
+                console.log("PASSED")
+                let isGroup = await self.db.GROUPS.isGroupByName(name)
+                if (isGroup == false) {
+                    await self.db.GROUPS.createGroup(name, this.uuid, members)
+                    this.update_group_list()
+                    console.log("CREATING GROUP:  " + name)
+                } else {
+                    console.log("group already created")
+                }
+            }
+
+        })
+    }
     event_users_search() {
         let self = this
         this.client.on("users_search", async (data) => {
@@ -148,18 +171,12 @@ class ConnectedUser {
         })
     }
     ///////////////////////////////////
-    async update_group_list () {
+    async update_group_list() {
         let groups = await this.db.GROUPS.listGroups(this.uuid);
         this.client.emit("groups_list", { groups })
         console.log("Updated Group List")
     }
 }
-
-
-
-
-
-
 
 
 
