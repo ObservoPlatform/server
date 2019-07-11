@@ -1,14 +1,14 @@
 {
-    "name": "storage",
-    "title": "Storage",
-    "main": "storage.js",
+    "name": "network",
+    "title": "Network",
+    "main": "Network.js",
     "version": "1.0.0",
     "fabritect": {
         "for": [
             "Observo"
         ],
         "consumes": {
-          
+            "app@database": "1.0.0"
         }
     }
 }

@@ -1,14 +1,14 @@
 {
-    "name": "http",
-    "title": "HTTP",
-    "main": "http.js",
+    "name": "database",
+    "title": "Storage",
+    "main": "database.js",
     "version": "1.0.0",
     "fabritect": {
         "for": [
             "Observo"
         ],
         "consumes": {
-            "app@storage": "1.0.0"
+          
         }
     }
 }

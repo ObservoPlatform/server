@@ -1,12 +1,14 @@
 {
-    "name": "loader",
-    "title": "Loader",
-    "main": "loader.js",
-    "version": "1.0.0",
-    "fabritect": {
-        "for": ["Observo"],
-        "consumes": {
-          "app@http": "1.0.0"
-        }
-      }
+  "name": "loader",
+  "title": "Loader",
+  "main": "loader.js",
+  "version": "1.0.0",
+  "fabritect": {
+    "for": [
+      "Observo"
+    ],
+    "consumes": {
+        "app@network": "1.0.0"
+    }
+  }
 }

@@ -1,7 +1,8 @@
 Observo.onMount((imports, register) => {
-    console.log(`LOADING ${name.toUpperCase()}`)
+    console.log(`LOADING ${__name.toUpperCase()}`)
     const Loki = require("lokijs")
     const uuidv4 = require("uuid/v4")
+    console.log(__root)
     let db = new Loki(__root + "/db/core.json", {
         autosave: true,
         autosaveInterval: 5000
@@ -17,6 +18,7 @@ Observo.onMount((imports, register) => {
             let _packs = db.addCollection("packs")
             let _plugins = db.addCollection("plugins")
             let _groups = db.addCollection("groups")
+            let _notifications = db.addCollection("notifications")
 
             let _loadedDB = {}
             //When a new project is created (projects/3878hf382gsjf9h9f.proj)
@@ -225,6 +227,7 @@ Observo.onMount((imports, register) => {
                             for (let member in members) {
                                 this.addUserToGroup(id, members[member], { invited: false, permissions: [] })
                             }
+                            //Add owner tog group
                             this.addUserToGroup(id, user_uuid, { invited: true, permissions: ["*"] })
                         }
                     },
@@ -307,21 +310,69 @@ Observo.onMount((imports, register) => {
                     async listGroups(user_uuid) {
                         let data = _users.findObject({ 'uuid': user_uuid })
                         let groups = {}
-                        for (let group in data.groups) {
-                            if (data.groups[group].invited != null) {
-                                if (data.groups[group].invited == true) {
-                                    let name = await this.getNameOfGroup(group)
-                                    groups[name] = group
+                        if (data != null) {
+                            for (let group in data.groups) {
+                                if (data.groups[group].invited != null) {
+                                    if (data.groups[group].invited == true) {
+                                        let name = await this.getNameOfGroup(group)
+                                        groups[name] = group
+                                    }
                                 }
                             }
                         }
-                        console.logX(groups)
+
                         return groups
                     }
                 },
                 /**
                  * PLUGIN STORAGE SUBSET
                  */
+                NOTIFICATION: {
+                    create(user_uuid, title, message, icon, color) {
+                        let id = uuidv4()
+                        _notifications.insert({
+                            user_uuid,
+                            title,
+                            message,
+                            icon,
+                            color,
+                            read: false,
+                            id,
+                        })
+                    },
+                    /**
+                     * Get the amount of notifications a user has not read
+                     * @param {*} user_uuid 
+                     * @param {*} id 
+                     */
+                    getAmount(user_uuid) {
+                        let results = _notifications.find({
+                            user_uuid,
+                            read: false,
+                        });
+                        if (results.length > 0) {
+                            return results.length
+                        }
+                        return 0
+                    },
+                    getStored(user_uuid, page) {
+                        let offset = (page * 15) - 15
+                        let results = _notifications.chain().find({
+                            user_uuid,
+                        }).offset(offset).limit(15).data().reverse();
+                        if (results.length > 0) {
+                            return results
+                        }
+                        return null
+                    },
+                    markAsRead(user_uuid, id) {
+
+                    },
+                    delete(user_uuid, id) {
+
+                    }
+                },
+
                 PLUGIN: {
                     /**
                      * Sets a plugins checksum. Creates it if not found, updates if is found
@@ -501,14 +552,9 @@ Observo.onMount((imports, register) => {
                     }
                 }
             }
-            register({
-                GLOBAL: {
-
-                },
-                APP: {
-                    getDatabase: () => {
-                        return _db
-                    }
+            register({}, {
+                get: () => {
+                    return _db
                 }
             })
         }

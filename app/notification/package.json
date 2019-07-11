@@ -1,0 +1,15 @@
+{
+  "name": "notification",
+  "title": "Notification",
+  "main": "notification.js",
+  "version": "1.0.0",
+  "fabritect": {
+    "for": [
+      "Observo"
+    ],
+    "consumes": {
+        "app@network": "1.0.0",
+        "app@database": "1.0.0"
+    }
+  }
+}

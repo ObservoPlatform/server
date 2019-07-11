@@ -8,8 +8,11 @@
             "Observo"
         ],
         "consumes": {
-            "app@storage": "1.0.0",
-            "app@http": "1.0.0"
+            "app@loader": "1.0.0",
+            "app@database": "1.0.0",
+            "app@network": "1.0.0",
+            "app@notification": "1.0.0"
+
         }
     }
 }
