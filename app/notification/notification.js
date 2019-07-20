@@ -20,7 +20,7 @@ class NotificationAPI {
         this.basket = basket
     }
     async create(user_uuid, body, save) {
-        print(`[notifications/new] Notification Attempting | ${user_uuid}`)
+        print(`[notifications/push] Notification Attempting | ${user_uuid}`)
         //Grab all of the infomation a notification would use
         let title = body.title ? body.title : "Notification"
         let message = body.message ? body.message : "This is a default notification"
@@ -28,19 +28,19 @@ class NotificationAPI {
         let color = body.color ? body.color : "black"
         //Check if the user is in the basket
         if (this.basket.has(user_uuid)) {
-            print(`[notifications/new] Found user in [basket] | ${user_uuid}`)
+            print(`[notifications/push] Found user in [basket] | ${user_uuid}`)
             for (let socketID in this.basket.get(user_uuid)) {
-                print(`[notifications/new] Found Client in [/core/] | ${user_uuid}`)
-                this.io.of("/core/").to(socketID).emit("notifications/new", {
+                print(`[notifications/push] Found Client in [/core/] | ${user_uuid}`)
+                this.io.of("/core/").to(socketID).emit("notifications/push", {
                     title,
                     message,
                     icon,
                     color
                 })
-                print(`[notifications/new] Notification Sent | ${user_uuid}`)
+                print(`[notifications/push] Notification Sent | ${user_uuid}`)
             }
         } else {
-            print(`[notifications/new] DIDNT FIND USER`)
+            print(`[notifications/push] DIDNT FIND USER | ${user_uuid}`)
         }
         //Do we want to save this notification? (not always, like errors)
         if (save) {

@@ -36,7 +36,7 @@ let print = (value) => {
  * Primarily used for organizing core events for /core/ socket
  */
 class User {
-    constructor(db, basket, {socket, client, io}, notification, session) {
+    constructor(db, basket, { socket, client, io }, notification, session) {
         this.db = db
         this.basket = basket
 
@@ -45,7 +45,7 @@ class User {
         this.io = io
 
         this.notification = notification
-        
+
         this.session = session
         this.uuid = null
         this.validAuth = false
@@ -58,6 +58,10 @@ class User {
         this.event_group_list()
         this.event_users_search()
         this.event_group_selected()
+        //this.event_group_project_create()
+        //this.event_group_project_delete() 
+        //this.event_group_project_edit() 
+
     }
     basket_remove() {
         this.basket.remove(this.uuid, this.client.id)
@@ -201,7 +205,16 @@ class User {
      * TODO: Yes
      */
     event_group_projects() {
+        let self = this
+        this.client.on("groups/projects/list", async (data) => {
 
+        })
+        this.client.on("groups/projects/create", async (data) => {
+            
+        })
+        this.client.on("groups/projects/update", async (data) => {
+            
+        })
     }
     /**
      * event_group_create - When a user creates a new group
@@ -309,8 +322,16 @@ class User {
             this.notification.updateAmount(this.uuid)
             this.client.on("notifications/list", async (page) => {
                 let notifications = await self.notification.get(self.uuid, page)
-                self.client.emit("notifications/list", notifications)
+                self.client.emit("notifications/list", { page, notifications })
                 print(`[notifications/list] Pushed Notifications Successfully | ${this.uuid}`)
+            })
+            this.client.on("notifications/dummy", async (page) => {
+                await self.notification.create(this.uuid, {
+                    title: "Meh",
+                    message: `Meh`,
+                    icon: "meh",
+                    color: "orange"
+                }, true)
             })
         }
     }
@@ -328,13 +349,19 @@ Observo.onMount(async (imports, register) => {
     let socket = io.of("/core/").on('connection', function (client) {
         let session = uuidv4()
         print(`Client Connected | S ${session} - C ${client.id}`)
-        let user = new User(db, basket, {socket, client, io}, notification, session)
+        let user = new User(db, basket, { socket, client, io }, notification, session)
         client.once('disconnect', function () {
             user.basket_remove()
             print(`Client Disconnected | S ${session} - C ${client.id}`)
             client.disconnect()
             user = null
         })
+        console.log(db.NOTIFICATION.getStored("872571a1-0872-4e74-8b90-57df2bb75093","6aa539e0-7fb5-45ed-b760-d95609a766dc"))
+        db.GROUPS.PERMISSION.addPermission("872571a1-0872-4e74-8b90-57df2bb75093","d3689e20-65e7-4f32-be7e-53dcc3a6dd8a", "projects.create")
+        console.log(db.GROUPS.PERMISSION.hasPermission("872571a1-0872-4e74-8b90-57df2bb75093","d3689e20-65e7-4f32-be7e-53dcc3a6dd8a", "projects.create"))
+        console.log(db.GROUPS.PERMISSION.hasPermission("872571a1-0872-4e74-8b90-57df2bb75093","d3689e20-65e7-4f32-be7e-53dcc3a6dd8a", "*"))
+        console.log(db.GROUPS.PERMISSION.hasPermission("872571a1-0872-4e74-8b90-57df2bb75093","d3689e20-65e7-4f32-be7e-53dcc3a6dd8a", "projects.remove"))
+    
     })
     register(
         {

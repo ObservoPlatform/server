@@ -15,8 +15,6 @@ Observo.onMount((imports, register) => {
         }
         else {
             let _users = db.addCollection("users")
-            let _packs = db.addCollection("packs")
-            let _plugins = db.addCollection("plugins")
             let _groups = db.addCollection("groups")
             let _notifications = db.addCollection("notifications")
 
@@ -322,6 +320,24 @@ Observo.onMount((imports, register) => {
                         }
 
                         return groups
+                    },
+                    PERMISSION: {
+                        addPermission(user_uuid, group_uuid, permission) {
+                            if (_db.USERS.isUser(user_uuid) && _db.GROUPS.isGroupByUUID(group_uuid)) {
+                                let user = _users.findObject({ 'uuid': user_uuid })
+                                if (!user.groups[group_uuid].permissions.includes(permission)) {
+                                    user.groups[group_uuid].permissions.push(permission)
+                                }
+                                _users.update(user)
+                            }
+                        },
+                        hasPermission(user_uuid, group_uuid, permission) {
+                            if (_db.USERS.isUser(user_uuid) && _db.GROUPS.isGroupByUUID(group_uuid)) {
+                                let user = _users.findObject({ 'uuid': user_uuid })
+                                return user.groups[group_uuid].permissions.includes(permission)
+                            }
+                            return null
+                        }
                     }
                 },
                 /**
@@ -355,11 +371,22 @@ Observo.onMount((imports, register) => {
                         }
                         return 0
                     },
-                    getStored(user_uuid, page) {
-                        let offset = (page * 15) - 15
-                        let results = _notifications.chain().find({
-                            user_uuid,
-                        }).offset(offset).limit(15).data().reverse();
+                    getStored(user_uuid, last_notification) {
+                        let last = _notifications.find({
+                            id: last_notification
+                        })
+
+                        let results = []
+                        if (last.length > 0) {
+                            results = _notifications.chain().find({
+                                user_uuid,
+                                "$loki": { "$lt": last[0]["$loki"] }
+                            }).simplesort("$loki", true).limit(15).data();
+                        } else {
+                            results = _notifications.chain().find({
+                                user_uuid,
+                            }).simplesort("$loki", true).limit(15).data();
+                        }
                         if (results.length > 0) {
                             return results
                         }
@@ -370,91 +397,6 @@ Observo.onMount((imports, register) => {
                     },
                     delete(user_uuid, id) {
 
-                    }
-                },
-
-                PLUGIN: {
-                    /**
-                     * Sets a plugins checksum. Creates it if not found, updates if is found
-                     * @param {String} plugin 
-                     * @param {Hash} checksum 
-                     */
-                    setPluginRenderChecksum(plugin, checksum) {
-                        if (this.isPlugin(plugin)) {
-                            let p = _plugins.findObject({ 'name': plugin })
-                            p.checksum = checksum
-                            _plugins.update(p)
-                        } else {
-                            _plugins.insert({ name: plugin, checksum: checksum, compiled_checksum: null })
-                        }
-                    },
-                    setPluginCompiledChecksum(plugin, checksum) {
-                        if (this.isPlugin(plugin)) {
-                            let p = _plugins.findObject({ 'name': plugin })
-                            p.compiled_checksum = checksum
-                            _plugins.update(p)
-                        } else {
-                            _plugins.insert({ name: plugin, compiled_checksum: checksum, checksum: null })
-                        }
-                    },
-                    /**
-                     * Gets a plugins checksum if its found, if not returns null
-                     * @param {String} plugin 
-                     * @param {Hash} checksum 
-                     */
-                    getPluginRenderChecksum(plugin) {
-                        if (this.isPlugin(plugin)) {
-                            let result = _plugins.find({ 'name': plugin })[0]
-                            return result.checksum
-                        }
-                        return null
-                    },
-                    getPluginCompiledChecksum(plugin) {
-                        if (this.isPlugin(plugin)) {
-                            let result = _plugins.find({ 'name': plugin })[0]
-                            return result.compiled_checksum
-                        }
-                        return null
-                    },
-                    /**
-                     * Checks if a plugin exists.
-                     * @param {*} plugin 
-                     */
-                    isPlugin(plugin) {
-                        let result = _plugins.find({ 'name': plugin })
-                        if (result.length > 0) return true
-                        return false
-                    }
-                },
-                PACK: {
-                    //////////////////////////////////
-                    /**
-                     * Create a new pack with a NAME a string array of PLUGINS
-                     * @param {String} name 
-                     * @param {String Array} plugins 
-                     */
-                    createPack(name, plugins) {
-                        _packs.insert({ name, plugins })
-                    },
-                    /**
-                     * Check if a PACK is valid
-                     * @param {String} name 
-                     */
-                    isPack(name) {
-                        let result = _packs.find({ 'name': name })
-                        if (result.length > 0) return true
-                        return false
-                    },
-                    /**
-                     * Get the PLUGINS in a pack
-                     * @param {String} name 
-                     */
-                    getPack(name) {
-                        if (this.isPack(name)) {
-                            let pack = _packs.find({ 'name': name })[0]
-                            return pack
-                        }
-                        return null
                     }
                 },
                 PROJECTS: {

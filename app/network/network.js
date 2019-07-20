@@ -127,6 +127,16 @@ Observo.onMount((imports, register) => {
                     console.log(chalk`[basket/{green add}] Added ${socketIdentifier} to ${uuid} | ${basket[uuid].length}`)
                 }
             },
+            set(info, uuid, socketIdentifier, key, value) {
+                if (basket[uuid]) {
+                    if (basket[uuid][socketIdentifier]) {
+                        basket[uuid][socketIdentifier][key] = value
+                        return true
+                    }
+                    return false
+                }
+                return false
+            },
             get: (info, uuid) => {
                 if (basket[uuid]) {
                     return basket[uuid]
