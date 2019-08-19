@@ -26,16 +26,19 @@ class NotificationAPI {
         let message = body.message ? body.message : "This is a default notification"
         let icon = body.icon ? body.icon : "bell"
         let color = body.color ? body.color : "black"
+        let button = body.button ? body.button : null;
         //Check if the user is in the basket
         if (this.basket.has(user_uuid)) {
             print(`[notifications/push] Found user in [basket] | ${user_uuid}`)
             for (let socketID in this.basket.get(user_uuid)) {
+             
                 print(`[notifications/push] Found Client in [/core/] | ${user_uuid}`)
                 this.io.of("/core/").to(socketID).emit("notifications/push", {
                     title,
                     message,
                     icon,
-                    color
+                    color,
+                    button
                 })
                 print(`[notifications/push] Notification Sent | ${user_uuid}`)
             }
@@ -44,7 +47,7 @@ class NotificationAPI {
         }
         //Do we want to save this notification? (not always, like errors)
         if (save) {
-            await this.db.NOTIFICATION.create(user_uuid, title, message, icon, color)
+            await this.db.NOTIFICATION.create(user_uuid, title, message, icon, color, button)
         }
         //Update the amount a user has
         this.updateAmount(user_uuid)
@@ -67,7 +70,6 @@ class NotificationAPI {
             }
         }
     }
-
 }
 Observo.onMount((imports, register) => {
     console.log(`LOADING ${__name.toUpperCase()}`)

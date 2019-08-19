@@ -14,7 +14,6 @@
  */
 
 
-
 var uuidv4 = require("uuid/v4")
 
 //All Connected Sockets (based on UUIDS)
@@ -53,17 +52,24 @@ class User {
 
         this.event_auth_validateAccount()
         this.event_auth_validKey()
+        this.event_auth_logout()
+
         this.event_group_create()
         this.event_group_checker()
         this.event_group_list()
-        this.event_users_search()
         this.event_group_selected()
-        //this.event_group_project_create()
-        //this.event_group_project_delete() 
-        //this.event_group_project_edit() 
+        this.event_group_accept()
+
+
+
+
+        this.event_users_search()
+        this.event_notifications()
+
 
     }
     basket_remove() {
+        this.basket.report()
         this.basket.remove(this.uuid, this.client.id)
     }
     /**
@@ -137,10 +143,18 @@ class User {
                 this.event_auth_valid()
             } else {
                 //INVALID Authentication Key Token
-                self.client.emit("auth/invalid")
+                self.client.emit("auth/invalid", { token: false })
             }
         })
 
+    }
+    event_auth_logout() {
+        let self = this
+        this.client.on("auth/logout", () => {
+            self.basket_remove()
+            self.validAuth = false
+            self.uuid = null
+        })
     }
     /**
      * event_auth_valid - Update the client when a user logs in
@@ -148,7 +162,8 @@ class User {
     event_auth_valid() {
         //Update things
         this.update_group_list()
-        this.update_notification()
+        this.notification.updateAmount(this.uuid)
+
     }
     ///////////////////////
     event_group_checker() {
@@ -192,12 +207,38 @@ class User {
             if (data.uuid != null) {
                 if (this.selectedGroup != data.uuid) {
                     let isGroup = await self.db.GROUPS.isGroupByUUID(data.uuid)
-                    if (isGroup) {
+                    let isInGroup = await self.db.GROUPS.isUserInGroup(self.uuid, data.uuid)
+                    if (isGroup && isInGroup) {
+                        this.basket.setValue(this.uuid, this.client.id, "selectedGroup", data.uuid)
                         this.selectedGroup = data.uuid
                         print(`[group/select] Selected Group: ${data.uuid} | ${this.uuid}`)
                     }
                 }
             }
+        })
+    }
+    event_group_accept() {
+        let self = this
+        this.client.on("groups/accept", async (group_uuid) => {
+            if (self.db.GROUPS.isGroupByUUID(group_uuid)) {
+                let accepted = await self.db.GROUPS.acceptInviteForUser(self.uuid, group_uuid)
+                if (accepted == true) {
+                    let group_name = await self.db.GROUPS.getNameOfGroup(group_uuid)
+                    let users = await self.db.GROUPS.listAllMembersInGroup(group_uuid)
+                    let username = await self.db.USERS.getUserObjectByUUID(self.uuid).username
+                    for (let user in users) {
+                        if (users[user].uuid == self.uuid) continue
+                        this.notification.create(users[user].uuid, {
+                            title: `New Member`,
+                            message: `**${username}** has joined the group **${group_name}**`,
+                            icon: "user",
+                            color: "blue",
+                        }, true)
+                    }
+                    await self.update_group_list()
+                }
+            }
+
         })
     }
     /**
@@ -210,10 +251,10 @@ class User {
 
         })
         this.client.on("groups/projects/create", async (data) => {
-            
+
         })
         this.client.on("groups/projects/update", async (data) => {
-            
+
         })
     }
     /**
@@ -236,20 +277,28 @@ class User {
                 let isGroup = await self.db.GROUPS.isGroupByName(name)
                 if (isGroup == false) {
                     //Now create the group
-                    await self.db.GROUPS.createGroup(name, this.uuid, members)
+                    let uuid = await self.db.GROUPS.createGroup(name, this.uuid, members)
                     //Loop all members in the group
-
-                    for (let member in members) {
-                        //Grab the members uuid
-                        let id = members[member]
-                        //Send a notification to the members (if online, and offline)
-                        await this.notification.create(id, {
-                            title: "Invited to Group",
-                            message: `You have been invited to join group: ${name}`,
-                            icon: "usergroup-add",
-                            color: "green"
-                        }, true)
+                    if (uuid != null) {
+                        for (let member in members) {
+                            //Grab the members uuid
+                            let id = members[member]
+                            //Send a notification to the members (if online, and offline)
+                            await this.notification.create(id, {
+                                title: "Invited to Group",
+                                message: `You have been invited to join group: ${name}`,
+                                icon: "usergroup-add",
+                                color: "green",
+                                button: {
+                                    text: "Accept",
+                                    color: "orange",
+                                    event: "groups/accept",
+                                    value: uuid
+                                }
+                            }, true)
+                        }
                     }
+
                     //Now update the CREATORS list of groups (should be at bottom but whatever)
                     //TODO: Add personal search for groups?
                     await this.update_group_list()
@@ -315,25 +364,38 @@ class User {
     /**
      * updateNotifications - Update the users notifications
      */
+
     async update_notification() {
-        if (this.validAuth) {
-            let self = this
-            print(`[notifications/list] Attempt Updating Notifications | ${this.uuid}`)
-            this.notification.updateAmount(this.uuid)
-            this.client.on("notifications/list", async (page) => {
+        this.notification.updateAmount(this.uuid)
+        print(`[notifications/list] Attempt Updating Notifications | ${this.uuid}`)
+    }
+    event_notifications() {
+        let self = this
+        this.client.on("notifications/list", async (page) => {
+            if (this.validAuth) {
                 let notifications = await self.notification.get(self.uuid, page)
                 self.client.emit("notifications/list", { page, notifications })
                 print(`[notifications/list] Pushed Notifications Successfully | ${this.uuid}`)
-            })
-            this.client.on("notifications/dummy", async (page) => {
-                await self.notification.create(this.uuid, {
-                    title: "Meh",
-                    message: `Meh`,
-                    icon: "meh",
-                    color: "orange"
-                }, true)
-            })
-        }
+            }
+        })
+        this.client.on("dummy/test", async (page) => {
+
+            self.notification.create(this.uuid, {
+                title: "Button Clicked!",
+                message: `**Yes**
+                [Google](https://www.google.com)
+                `,
+                icon: "check",
+                color: "green",
+            }, false)
+
+        })
+        this.client.on("notifications/dummy", async (page) => {
+            let group = "a72e49e8-79da-43a6-b936-9b271fe936d7"
+            console.log(self.db.GROUPS.listAllMembersInGroup(group))
+            console.log(self.basket.selectAll("selectedGroup", group))
+        })
+
     }
 }
 
@@ -356,12 +418,6 @@ Observo.onMount(async (imports, register) => {
             client.disconnect()
             user = null
         })
-        console.log(db.NOTIFICATION.getStored("872571a1-0872-4e74-8b90-57df2bb75093","6aa539e0-7fb5-45ed-b760-d95609a766dc"))
-        db.GROUPS.PERMISSION.addPermission("872571a1-0872-4e74-8b90-57df2bb75093","d3689e20-65e7-4f32-be7e-53dcc3a6dd8a", "projects.create")
-        console.log(db.GROUPS.PERMISSION.hasPermission("872571a1-0872-4e74-8b90-57df2bb75093","d3689e20-65e7-4f32-be7e-53dcc3a6dd8a", "projects.create"))
-        console.log(db.GROUPS.PERMISSION.hasPermission("872571a1-0872-4e74-8b90-57df2bb75093","d3689e20-65e7-4f32-be7e-53dcc3a6dd8a", "*"))
-        console.log(db.GROUPS.PERMISSION.hasPermission("872571a1-0872-4e74-8b90-57df2bb75093","d3689e20-65e7-4f32-be7e-53dcc3a6dd8a", "projects.remove"))
-    
     })
     register(
         {

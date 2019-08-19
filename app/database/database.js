@@ -163,9 +163,7 @@ Observo.onMount((imports, register) => {
                      * @param {String} authKey 
                      */
                     validateAuthKey(user_uuid, authKey) {
-                        console.log("yes")
                         if (this.isUser(user_uuid)) {
-                            console.log("here")
                             let user = this.getUserByUUID(user_uuid)
                             if (user.authKey == authKey) {
                                 return true
@@ -175,7 +173,6 @@ Observo.onMount((imports, register) => {
                     },
                     getNewSession(user_uuid) {
                         if (this.isUser(user_uuid)) {
-                            console.log("here")
                             let user = this.getUserObjectByUUID(user_uuid)
                             let session = uuidv4()
                             user.session = session
@@ -223,14 +220,13 @@ Observo.onMount((imports, register) => {
                             })
                             //Invite all users to the group
                             for (let member in members) {
-                                this.addUserToGroup(id, members[member], { invited: false, permissions: [] })
+                                this.addUserToGroup(id, members[member], { acceptInvite: false, permissions: [] })
                             }
                             //Add owner tog group
-                            this.addUserToGroup(id, user_uuid, { invited: true, permissions: ["*"] })
+                            this.addUserToGroup(id, user_uuid, { acceptInvite: true, permissions: ["*"] })
+                            return id
                         }
-                    },
-                    hasGroupPermission(user_uuid, permission) {
-
+                        return null
                     },
                     async createProject(user_uuid, group_uuid) {
                         if (await this.isGroupByUUID(group_uuid)) {
@@ -276,10 +272,12 @@ Observo.onMount((imports, register) => {
                      * @param {String} group_uuid 
                      * @param {String} user_uuid 
                      */
-                    isUserInGroup(group_uuid, user_uuid) {
-                        let user = _groups.findObject({ 'user': group_uuid, 'uuid': user_uuid })
-                        if (user.length > 1) {
-                            return true
+                    isUserInGroup(user_uuid, group_uuid) {
+                        let user = _users.findObject({ 'uuid': user_uuid })
+                        if (user.groups[group_uuid] != null) {
+                            if (user.groups[group_uuid].acceptInvite == true) {
+                                return true
+                            }
                         }
                         return false
                     },
@@ -290,7 +288,6 @@ Observo.onMount((imports, register) => {
                      * @param {Boolean} accept 
                      */
                     addUserToGroup(group_uuid, user_uuid, options) {
-                        console.log(user_uuid)
                         if (_db.USERS.isUser(user_uuid)) {
                             let user = _users.findObject({ 'uuid': user_uuid })
                             if (user.groups == null) {
@@ -305,13 +302,65 @@ Observo.onMount((imports, register) => {
                             console.log("Invalid User...")
                         }
                     },
+                    async listAllUsersInGroup(group_id) {
+                        if (_db.GROUPS.isGroupByUUID(group_id)) {
+                            let results = _users.where(function (obj) {
+                                if (obj.groups[group_id] != null) {
+                                    return true
+                                }
+                                return false
+                            });
+                            let users = []
+                            for (let user in results) {
+                                users.push({ uuid: results[user].uuid, username: results[user].username })
+                            }
+                            return users
+                        }
+                        return []
+
+                    },
+                    async listAllMembersInGroup(group_id) {
+                        if (_db.GROUPS.isGroupByUUID(group_id)) {
+                            let results = _users.where(function (obj) {
+                                if (obj.groups[group_id] != null) {
+                                    return obj.groups[group_id].acceptInvite
+                                }
+                                return false
+                            });
+                            let users = []
+                            for (let user in results) {
+                                users.push({ uuid: results[user].uuid, username: results[user].username })
+                            }
+                            return users
+                        }
+                        return []
+
+                    },
+                    async acceptInviteForUser(user_uuid, group_uuid) {
+                        if (_db.USERS.isUser(user_uuid)) {
+                            let user = _users.findObject({ 'uuid': user_uuid })
+                            if (user.groups[group_uuid] != null) {
+                                if (user.groups[group_uuid].acceptInvite) {
+                                    return false
+                                }
+                                user.groups[group_uuid].acceptInvite = true
+                                _users.update(user)
+                                return true
+
+                            }
+                            return null
+                        } else {
+                            console.log("Invalid User...")
+                            return null
+                        }
+                    },
                     async listGroups(user_uuid) {
                         let data = _users.findObject({ 'uuid': user_uuid })
                         let groups = {}
                         if (data != null) {
                             for (let group in data.groups) {
-                                if (data.groups[group].invited != null) {
-                                    if (data.groups[group].invited == true) {
+                                if (data.groups[group].acceptInvite != null) {
+                                    if (data.groups[group].acceptInvite == true) {
                                         let name = await this.getNameOfGroup(group)
                                         groups[name] = group
                                     }
@@ -344,17 +393,22 @@ Observo.onMount((imports, register) => {
                  * PLUGIN STORAGE SUBSET
                  */
                 NOTIFICATION: {
-                    create(user_uuid, title, message, icon, color) {
+                    create(user_uuid, title, message, icon, color, button) {
                         let id = uuidv4()
-                        _notifications.insert({
+                        let info = {
                             user_uuid,
                             title,
                             message,
                             icon,
                             color,
-                            read: false,
                             id,
-                        })
+                            read: false,
+                        }
+                        if (button != null) {
+                            info.button = button
+                        }
+
+                        _notifications.insert(info)
                     },
                     /**
                      * Get the amount of notifications a user has not read
@@ -375,8 +429,9 @@ Observo.onMount((imports, register) => {
                         let last = _notifications.find({
                             id: last_notification
                         })
-
+                        console.log(last)
                         let results = []
+
                         if (last.length > 0) {
                             results = _notifications.chain().find({
                                 user_uuid,

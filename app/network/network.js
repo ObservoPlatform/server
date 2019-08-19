@@ -7,15 +7,17 @@
  */
 
 //Include all modules
-var express = require('express');
-var chalk = require('chalk');
-var app = express();
-var server = require('http').createServer(app);
-var io = require('socket.io')(server);
+const { JSONPath } = require('jsonpath-plus');
+const express = require('express');
+const chalk = require('chalk');
+const app = express();
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
 
 server.listen(35575);
 
 let basket = {}
+let sockets = {}
 
 /**
  * createPluginHandler - Creates a plugin handler (socket.io)
@@ -111,52 +113,76 @@ Observo.onMount((imports, register) => {
     console.log(`LOADING ${__name.toUpperCase()}`)
     let db = imports.GROUP.database.get()
     let a = new REST(db)
+    let BASKET_STRUCT = {
+        report: () => {
+            console.log(basket)
+        },
+        add: (info, uuid, socketIdentifier) => {
+            if (basket[uuid] == null) {
+                basket[uuid] = {}
+            }
+            if (basket[uuid][socketIdentifier] == null) {
+                if (sockets[socketIdentifier] != uuid) {
+                    BASKET_STRUCT.remove({}, uuid, socketIdentifier)
+                    sockets[socketIdentifier] = uuid
+                }
+                basket[uuid][socketIdentifier] = {}
+                console.log(chalk`[basket/{green add}] Added ${socketIdentifier} to ${uuid} | ${basket[uuid].length}`)
+            }
+        },
+        setValue(info, uuid, socketIdentifier, key, value) {
+            if (basket[uuid]) {
+                if (basket[uuid][socketIdentifier]) {
+                    basket[uuid][socketIdentifier][key] = value
+                    return true
+                }
+                return false
+            }
+            return false
+        },
+        selectAll(info, key, value) {
+            const results = JSONPath({ resultType: "path" }, `$..*[?(@property =='${key}' && @ == '${value}')]`, basket);
+            if (results.length > 0) {
+                let paths = []
+                for (let path in results) {
+                    let data = JSONPath.toPathArray(results[path].replace('/core/',''))
+                    let socket = "/core/" + results[path].split("/core/")[1].split("\']")[0]
+                    let value = {}
+                    value[data[1]] = socket
+                    paths.push(value)
+                }
+                return paths
+            }
+            return []
+        },
+        get: (info, uuid) => {
+            if (basket[uuid]) {
+                return basket[uuid]
+            }
+            return null
+        },
+        has: (info, uuid) => {
+            if (basket[uuid] != null) {
+                return true
+            }
+            return false
+        },
+        remove(info, uuid, socketIdentifier) {
+            if (basket[uuid] != null) {
+                if (basket[uuid][socketIdentifier] != null) {
+                    delete basket[uuid][socketIdentifier]
+                    delete sockets[socketIdentifier]
+                    console.log(chalk`[basket/{red remove}] Removed ${socketIdentifier} from ${uuid} | ${basket[uuid].length}`)
+                }
+            }
+        }
+    }
     register({}, {
         SOCKET: {
             get: () => {
                 return io
             }
         },
-        BASKET: {
-            add: (info, uuid, socketIdentifier) => {
-                if (basket[uuid] == null) {
-                    basket[uuid] = {}
-                }
-                if (basket[uuid][socketIdentifier] == null) {
-                    basket[uuid][socketIdentifier] = {}
-                    console.log(chalk`[basket/{green add}] Added ${socketIdentifier} to ${uuid} | ${basket[uuid].length}`)
-                }
-            },
-            set(info, uuid, socketIdentifier, key, value) {
-                if (basket[uuid]) {
-                    if (basket[uuid][socketIdentifier]) {
-                        basket[uuid][socketIdentifier][key] = value
-                        return true
-                    }
-                    return false
-                }
-                return false
-            },
-            get: (info, uuid) => {
-                if (basket[uuid]) {
-                    return basket[uuid]
-                }
-                return null
-            },
-            has: (info, uuid) => {
-                if (basket[uuid] != null) {
-                    return true
-                }
-                return false
-            },
-            remove(info, uuid, socketIdentifier) {
-                if (basket[uuid] != null) {
-                    if (basket[uuid][socketIdentifier] != null) {
-                        delete basket[uuid][socketIdentifier]
-                        console.log(chalk`[basket/{red remove}] Removed ${socketIdentifier} from ${uuid} | ${basket[uuid].length}`)
-                    }
-                }
-            }
-        }
+        BASKET: BASKET_STRUCT
     })
 })
