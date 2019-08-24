@@ -60,8 +60,9 @@ class User {
         this.event_group_selected()
         this.event_group_accept()
 
-
-
+        //List all packs that are loaded
+        //this.event_packs_list()
+        
 
         this.event_users_search()
         this.event_notifications()
@@ -212,6 +213,8 @@ class User {
                         this.basket.setValue(this.uuid, this.client.id, "selectedGroup", data.uuid)
                         this.selectedGroup = data.uuid
                         print(`[group/select] Selected Group: ${data.uuid} | ${this.uuid}`)
+                        //TODO: Send Projects
+                        //TODO: Send Group
                     }
                 }
             }
